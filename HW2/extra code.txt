@@ -1,0 +1,91 @@
+def compositeH_pano(H2to1, template, img):
+    """
+    Returns the composite image.
+
+    Input
+    -----
+    H2to1: Homography from image to template
+    template: template image to be warped
+    img: background image
+
+    Returns
+    -------
+    composite_img: Composite image
+
+    """
+
+    # ===== your code here! =====
+    # TODO: Create a composite image after warping the template image on top
+    # of the image using the homography
+    # You should call cv2.warpPerspective for this
+
+
+    img = np.array(img).astype(np.uint8)
+    template = np.array(template)
+
+    h,w = template.shape[:2]
+    corners = np.float32([[0,0,1],
+                          [0,h-1,1],
+                          [w-1,h-1,1], 
+                          [w-1,0,1]])
+    warped_corners = H2to1 @ corners.T
+    warped_corners /= warped_corners[2,:]
+    
+    
+    x_max = warped_corners[0,:].max()
+    x_min = warped_corners[0,:].min()
+    y_max = warped_corners[1,:].max()
+    y_min = warped_corners[1,:].min()
+
+    print('warped corners = ', x_max, '\n', x_min, '\n',y_max, '\n', y_min)
+
+
+
+    h_img, w_img = img.shape[:2]
+    corners_img = np.float32([[0,0,1],
+                          [0,h_img-1,1],
+                          [w_img-1,h_img-1,1], 
+                          [w_img-1,0,1]]).T
+    
+    print('corners_img = ', corners_img)
+    
+    x_max_img = corners_img[0,:].max()
+    x_min_img = corners_img[0,:].min()
+    y_max_img = corners_img[1,:].max()
+    y_min_img = corners_img[1,:].min()
+   
+    
+    print('img corners = ', x_max_img, '\n', x_min_img, '\n',y_max_img, '\n', y_min_img)
+
+    translate_matrix = np.array([[1, 0, -(x_min)],
+                                [0, 1, -(y_min)],
+                                [0, 0, 1]])
+    H2to1 = translate_matrix @ H2to1
+
+    img = cv2.copyMakeBorder(img, int(y_max - y_max_img), int(abs(y_min)), 0, int(x_max - x_max_img), cv2.BORDER_CONSTANT, 255).astype(np.uint8)
+    new_width = img.shape[1]
+    new_height = img.shape[0]
+    
+    print('img shape = ', img.shape)
+    warped_template = cv2.warpPerspective(template, H2to1, (new_width, new_height))
+    print('warped template shape = ', warped_template.shape)
+    plt.imshow(warped_template)
+    plt.show()
+
+    
+    mask = np.zeros_like(img, dtype=np.uint8)
+    print('mask shape = ', mask.shape)
+    mask[warped_template > 0] = 255
+
+    mask_inv = cv2.bitwise_not(mask).astype(np.uint8)
+
+    img_bg = cv2.bitwise_and(img, mask_inv)
+
+    warped_fg = cv2.bitwise_and(warped_template, warped_template, mask)
+    composite_img = cv2.add(img_bg, warped_fg)
+
+
+    # ==== end of code ====
+
+    return composite_img
+
